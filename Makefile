@@ -1,4 +1,9 @@
 
+PGF=$(subst \,/,$(subst C:\,/c/,$(PROGRAMFILES)))
+PGF86=${PGF} (x86)
+PATH:=${PATH}:${PGF86}/Inno Setup 6
+PATH:=${PATH}:${PGF}/Inkscape/bin
+
 MAGICK=magick
 RC=windres
 STRIP=strip
@@ -41,6 +46,13 @@ clean :
 rclean :
 	rm -f *~ *.d ${PREFIX}.ico *.o $(OBJS) $(TARGET) WebView2Loader.dll
 
+cfg :
+	@echo "PGF ${PGF}"
+	@echo "PGF86 ${PGF86}"
+	@echo "PATH"
+	@echo "${PATH}" | sed 's/:/\n/g'
+	@echo "END PATH"
+	which inkscape.exe
 
 # Ces régles implicites ne sont pas utiles quand on fait 'make rclean' (voir même make clean ...)
 ifneq ($(MAKECMDGOALS),rclean)
