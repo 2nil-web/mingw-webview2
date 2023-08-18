@@ -2,3 +2,5 @@
 *.o
 .vs
 *.user
+*.d
+*.ico

@@ -1,1 +1,17 @@
+<html>
+  <head>
+    <script>
+function onKeyUp(evt) {
+  evt=evt || window.event;
+  if (evt.keyCode === 27) {
+    window.close();
+  }
+}      
+document.onkeyup=onKeyUp;
+    </script>
+  </head>
+  <body>
+  </body>
 Hello
+<input type="button" value="Quit" onclick="console.log('Quitting.'); window.close(); close(); console.log('Should not display.'); ">
+</html>

@@ -1,3 +1,4 @@
+
 #define CINTERFACE
 #include "WebView2.h"
 #include "event.h"
@@ -10,11 +11,12 @@
 #include <codecvt>
 #endif
 
+#include "resource.h"
+
 ICoreWebView2* webview2 = nullptr;
 ICoreWebView2Controller* controller = nullptr;
 
-std::wstring TStrToWStr(LPCTSTR str)
-{
+std::wstring TStrToWStr(LPCTSTR str) {
 #ifdef UNICODE
     return std::wstring(str);
 #else
@@ -23,8 +25,7 @@ std::wstring TStrToWStr(LPCTSTR str)
 #endif
 }
 
-void GetDataPath(LPTSTR szOut, DWORD nSize)
-{
+void GetDataPath(LPTSTR szOut, DWORD nSize) {
 	TCHAR szExePath[MAX_PATH];
 	GetModuleFileName(nullptr, szExePath, _countof(szExePath));
 
@@ -39,30 +40,30 @@ void GetDataPath(LPTSTR szOut, DWORD nSize)
 	_tcsncat(szOut, szExeName, nSize);
 }
 
-[[ noreturn ]] void FatalError(LPCTSTR format, ...)
-{
+[[ noreturn ]] void FatalError(LPCTSTR format, ...) {
 	MessageBox(nullptr, format, TEXT("webview2-mingw"), MB_OK | MB_ICONSTOP);
 	ExitProcess(1);
 }
 
-void ResizeBrowser(HWND hWnd)
-{
-	if (!controller)
-	{
-		return;
-	}
+void ResizeBrowser(HWND hWnd) {
+	if (!controller) return;
+
 	RECT bounds;
 	GetClientRect(hWnd, &bounds);
 	controller->lpVtbl->put_Bounds(controller, bounds);
 }
 
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	switch (msg)
-	{
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	switch (msg) {
 	case WM_SIZE:
 		ResizeBrowser(hWnd);
 		break;
+  case WM_KEYDOWN:
+    if (wParam == VK_ESCAPE) DestroyWindow(hWnd);
+    break;
+  case WM_NOTIFY:
+    if (HIBYTE(GetKeyState(VK_ESCAPE)) != 0) DestroyWindow(hWnd);
+    break;
 	case WM_CLOSE:
 		DestroyWindow(hWnd);
 		break;
@@ -75,20 +76,23 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow)
-{
+const char *appTitle="MinGW WebView2 Demo";
+
+INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 	UNREFERENCED_PARAMETER(nCmdShow);
-
+/*
 	HICON icon = reinterpret_cast<HICON>(LoadImage(
 		hInstance,
-		IDI_APPLICATION,
+		IDI_MAINICON,
 		IMAGE_ICON,
 		GetSystemMetrics(SM_CXICON),
 		GetSystemMetrics(SM_CYICON),
 		0
-	));
+	));*/
+
+	HICON icon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MAINICON));
 
 	WNDCLASSEX wc{};
 	wc.cbSize = sizeof(WNDCLASSEX);
@@ -101,12 +105,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	HWND hWnd = CreateWindowEx(
 		0,
 		TEXT("webview"),
-		TEXT("MinGW WebView2 Demo"),
+		TEXT(appTitle),
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
-		1024,
-		768,
+		CW_USEDEFAULT,
+		CW_USEDEFAULT,
 		nullptr,
 		nullptr,
 		hInstance,
@@ -124,22 +128,16 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// Set up some event handlers.
 	EventHandler handler{};
 
-	handler.EnvironmentCompleted = [&](HRESULT result, ICoreWebView2Environment* created_environment)
-	{
-		if (FAILED(result))
-		{
-			FatalError(TEXT("Failed to create environment?"));
-		}
+	handler.EnvironmentCompleted = [&](HRESULT result, ICoreWebView2Environment* created_environment) {
+		if (FAILED(result)) FatalError(TEXT("Failed to create environment?"));
+
 		created_environment->lpVtbl->CreateCoreWebView2Controller(created_environment, hWnd, &handler);
 		return S_OK;
 	};
 
-	handler.ControllerCompleted = [&](HRESULT result, ICoreWebView2Controller* new_controller)
-	{
-		if (FAILED(result))
-		{
-			FatalError(TEXT("Failed to create controller?"));
-		}
+	handler.ControllerCompleted = [&](HRESULT result, ICoreWebView2Controller* new_controller) {
+		if (FAILED(result)) FatalError(TEXT("Failed to create controller?"));
+
 		controller = new_controller;
 		controller->lpVtbl->AddRef(controller);
 		controller->lpVtbl->get_CoreWebView2(controller, &webview2);
@@ -165,16 +163,13 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		nullptr,
 		&handler
 	);
-	if (FAILED(result))
-	{
-		FatalError(TEXT("Call to CreateCoreWebView2EnvironmentWithOptions failed!"));
-	}
+	if (FAILED(result)) FatalError(TEXT("Call to CreateCoreWebView2EnvironmentWithOptions failed!"));
+
+  //handler.AddHostObjectToScript(L"sample", NULL);
 
 	MSG msg;
-	while (GetMessage(&msg, nullptr, 0, 0))
-	{
-		if (msg.message == WM_QUIT)
-		{
+	while (GetMessage(&msg, nullptr, 0, 0)) {
+		if (msg.message == WM_QUIT) {
 			break;
 		}
 		TranslateMessage(&msg);
@@ -183,3 +178,4 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	return 0;
 }
+
